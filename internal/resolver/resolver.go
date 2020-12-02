@@ -3,12 +3,14 @@ package resolver
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
+	"github.com/Datadog/datadog-go/statsd"
 	"github.com/benjaminws/ftdd/internal/data"
 	"log"
 	"math"
 )
 
-func ResolveForzaDataForBuffer(buffer []byte, numBytes int) *data.ForzaData {
+func ResolveForzaDataForBuffer(ddstatsd *statsd.Client, buffer []byte, numBytes int) error {
 
 	fd := data.ForzaData{
 		IsRaceOn:    computeInt32(getBytes(buffer, numBytes, 0, 4)),
@@ -98,6 +100,31 @@ func ResolveForzaDataForBuffer(buffer []byte, numBytes int) *data.ForzaData {
 		carAttitude := CarAttitude(totalSlipFront, totalSlipRear)
 		fun := HavingFun(carAttitude)
 
+		log.Printf("forzaData: %+v", fd)
+		tags := []string{
+			fmt.Sprintf("car_ordinal:%d", fd.CarOrdinal),
+			fmt.Sprintf("car_class:%s", data.CarClass(fd.CarClass)),
+			fmt.Sprintf("car_drivetrain_type:%s", data.DrivetrainType(fd.DrivetrainType)),
+			fmt.Sprintf("car_attitude:%s", carAttitude),
+			fmt.Sprintf("driver_having_fun:%t", fun),
+		}
+		log.Printf("sending tags: %+v", tags)
+		if err := ddstatsd.Gauge("car.current_engine_rpm", float64(fd.CurrentEngineRpm), tags, 1); err != nil {
+			return err
+		}
+		if err := ddstatsd.Gauge("car.speed_mph", float64(fd.SpeedMPH), tags, 1); err != nil {
+			return err
+		}
+		if err := ddstatsd.Gauge("car.gear", float64(fd.Gear), tags, 1); err != nil {
+			return err
+		}
+		if err := ddstatsd.Gauge("car.bhp", float64(fd.BrakeHP), tags, 1); err != nil {
+			return err
+		}
+		if err := ddstatsd.Gauge("car.torque_ft_lbs", float64(fd.TorqueFtLbs), tags, 1); err != nil {
+			return err
+		}
+
 		log.Printf("RPM: %.0f \t Gear: %d \t BHP: %.0f \t Speed: %.0f \t Total slip: %.0f \t Attitude: %s \t Having Fun?: %t",
 			fd.CurrentEngineRpm,
 			fd.Gear,
@@ -108,7 +135,7 @@ func ResolveForzaDataForBuffer(buffer []byte, numBytes int) *data.ForzaData {
 			fun,
 		)
 	}
-	return &fd
+	return nil
 }
 
 func getBytes(buffer []byte, numBytes, offset, length int) []byte {
