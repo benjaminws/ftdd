@@ -1,18 +1,17 @@
 package server
 
 import (
-	"context"
 	"fmt"
 	"github.com/Datadog/datadog-go/statsd"
 	"github.com/benjaminws/ftdd/internal/resolver"
 	"log"
 	"net"
-	"time"
+	"sync"
 )
 
 const maxBufferSize = 1024
 
-func Server(ctx context.Context, address string) (err error) {
+func Server(address string) (err error) {
 	pc, err := net.ListenPacket("udp", address)
 	if err != nil {
 		return
@@ -29,40 +28,24 @@ func Server(ctx context.Context, address string) (err error) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	doneChan := make(chan error, 1)
-	buffer := make([]byte, maxBufferSize)
 
+	buffer := make([]byte, maxBufferSize)
+	var wg sync.WaitGroup
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		for {
 			n, _, err := pc.ReadFrom(buffer)
 			if err != nil {
-				doneChan <- err
 				return
 			}
-
-			//log.Printf("packet-received: bytes=%d from=%s\n",
-			//	n, addr.String())
 
 			if err := resolver.ResolveForzaDataForBuffer(ddstatsd, buffer, n); err != nil {
-				doneChan <- err
-				return
-			}
-
-			deadline := time.Now().Add(time.Duration(int64(30)))
-			err = pc.SetWriteDeadline(deadline)
-			if err != nil {
-				doneChan <- err
 				return
 			}
 		}
 	}()
 
-	select {
-	case <-ctx.Done():
-		fmt.Println("cancelled")
-		err = ctx.Err()
-	case err = <-doneChan:
-	}
-
+	wg.Wait()
 	return
 }

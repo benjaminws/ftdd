@@ -122,3 +122,13 @@ const (
 func (c CarClass) String() string {
 	return [...]string{"E", "D", "C", "B", "A", "S", "R", "P", "X"}[c]
 }
+
+type CarName int
+
+const (
+	Porsche_2004_911_GT3 CarName = iota
+)
+
+func (c CarName) String() string {
+	return [...]string{"Porsche_2004_911_GT3"}[c]
+}
