@@ -11,5 +11,4 @@ func main() {
 	if err := server.Server(ctx, ":6969"); err != nil {
 		log.Fatal(err)
 	}
-
 }
