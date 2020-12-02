@@ -8,7 +8,7 @@ import (
 	"math"
 )
 
-func ResolveForzaDataForBuffer(buffer []byte, numBytes int) {
+func ResolveForzaDataForBuffer(buffer []byte, numBytes int) *data.ForzaData {
 
 	fd := data.ForzaData{
 		IsRaceOn:    computeInt32(getBytes(buffer, numBytes, 0, 4)),
@@ -87,17 +87,28 @@ func ResolveForzaDataForBuffer(buffer []byte, numBytes int) {
 		// Computed Brake Horse Power from watts
 		fd.BrakeHP = fd.Power / 745.699872
 		fd.Torque = computeFloat32(getBytes(buffer, numBytes, 252, 256))
+		// Newton-meters to Foot-pounds
+		fd.TorqueFtLbs = fd.Torque / 1.356
 		fd.Gear = uint8(getBytes(buffer, numBytes, 307, 308)[0])
 
 		// Convert slip values to ints as the precision of a float means a neutral state is rarely reporte
 		totalSlipRear := int(fd.TireCombinedSlipRearLeft + fd.TireCombinedSlipRearRight)
 		totalSlipFront := int(fd.TireCombinedSlipFrontLeft + fd.TireCombinedSlipFrontRight)
 
-		carAttitude := carAttitude(totalSlipFront, totalSlipRear)
-		fun := havingFun(carAttitude)
+		carAttitude := CarAttitude(totalSlipFront, totalSlipRear)
+		fun := HavingFun(carAttitude)
 
-		log.Printf("RPM: %.0f \t Gear: %d \t BHP: %.0f \t Speed: %.0f \t Total slip: %.0f \t Attitude: %s \t Having Fun?: %t", fd.CurrentEngineRpm, fd.Gear, fd.BrakeHP, fd.SpeedMPH, (fd.TireCombinedSlipRearLeft + fd.TireCombinedSlipRearRight), carAttitude, fun)
+		log.Printf("RPM: %.0f \t Gear: %d \t BHP: %.0f \t Speed: %.0f \t Total slip: %.0f \t Attitude: %s \t Having Fun?: %t",
+			fd.CurrentEngineRpm,
+			fd.Gear,
+			fd.BrakeHP,
+			fd.SpeedMPH,
+			fd.TireCombinedSlipRearLeft+fd.TireCombinedSlipRearRight,
+			carAttitude,
+			fun,
+		)
 	}
+	return &fd
 }
 
 func getBytes(buffer []byte, numBytes, offset, length int) []byte {
@@ -116,7 +127,7 @@ func computeFloat32(buffer []byte) float32 {
 	return math.Float32frombits(bits)
 }
 
-func havingFun(attitude string) bool {
+func HavingFun(attitude string) bool {
 	switch attitude {
 	case "Understeer":
 		return false
@@ -125,7 +136,7 @@ func havingFun(attitude string) bool {
 	}
 }
 
-func carAttitude(totalSlipFront int, totalSlipRear int) string {
+func CarAttitude(totalSlipFront int, totalSlipRear int) string {
 	// Check attitude of car by comparing front and rear slip levels
 	// If front slip > rear slip, means car is understeering
 	if totalSlipRear > totalSlipFront {

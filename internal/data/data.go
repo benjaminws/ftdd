@@ -65,10 +65,11 @@ type ForzaData struct {
 	PositionY                            float32
 	PositionZ                            float32
 	Speed                                float32 // meters per second
-	SpeedMPH							 float32 // Computed miles per hour
+	SpeedMPH                             float32 // Computed miles per hour
 	Power                                float32 // watts
-	BrakeHP								 float32
+	BrakeHP                              float32
 	Torque                               float32 // newton meter
+	TorqueFtLbs                          float32 // ft / lb of torque
 	TireTempFrontLeft                    float32
 	TireTempFrontRight                   float32
 	TireTempRearLeft                     float32
@@ -90,4 +91,34 @@ type ForzaData struct {
 	Steer                                int8
 	NormalizedDrivingLine                int8
 	NormalizedAIBrakeDifference          int8
+}
+
+type DrivetrainType int
+
+const (
+	FWD DrivetrainType = iota
+	RWD
+	AWD
+)
+
+func (d DrivetrainType) String() string {
+	return [...]string{"FWD", "RWD", "AWD"}[d]
+}
+
+type CarClass int
+
+const (
+	E CarClass = iota
+	D
+	C
+	B
+	A
+	S
+	R
+	P
+	X
+)
+
+func (c CarClass) String() string {
+	return [...]string{"E", "D", "C", "B", "A", "S", "R", "P", "X"}[c]
 }
